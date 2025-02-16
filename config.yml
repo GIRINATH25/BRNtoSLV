@@ -1,0 +1,61 @@
+source_config: # PostgreSQL
+  dialect: postgresql
+  driver: PostgreSQL Unicode
+  connection:
+    host: localhost
+    port: 5432
+    database: 
+    username: 
+    password: 
+    schema:
+
+source:
+  dialect: mssql+pyodbc
+  driver: ODBC Driver 17 for SQL Server
+  connection:
+    host: localhost\SQLEXPRESS
+    database: 
+    username: 
+    password: 
+
+staging: # PostgreSQL
+  dialect: postgresql
+  driver:  PostgreSQL Unicode
+  connection:
+    host: localhost
+    port: 5432
+    database: 
+    username: 
+    password: 
+    schema: 
+
+dwh: # PostgreSQL
+  dialect: postgresql
+  driver:  PostgreSQL Unicode
+  connection:
+    host: localhost
+    port: 5432
+    database: 
+    username: 
+    password: 
+    schema: 
+
+clickhouse: # http port for sqlalchemy
+  dialect: clickhouse
+  driver: 
+  connection:
+    host: localhost
+    port: 8123
+    database: 
+    username: 
+    password: 
+
+clickhouse-tcp: # tcp port for clickhouse_driver
+  dialect: clickhouse
+  driver: 
+  connection:
+    host: localhost
+    port: 9000
+    database: 
+    username: 
+    password: 
