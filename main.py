@@ -3,7 +3,6 @@ from sqlalchemy import text
 from dub import dub
 
 
-
 db = DBConnector()
 
 for _ in range(0,10):
