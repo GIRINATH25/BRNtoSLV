@@ -1,8 +1,6 @@
 import yaml
-from sqlalchemy import create_engine
-from sqlalchemy.pool import QueuePool
-from urllib.parse import quote_plus
 from db.engine import get_engine
+from db.model import create_all
 
 
 class DBConnector:
@@ -48,6 +46,7 @@ class DBConnector:
         
         engine = get_engine(self.config.get('staging', {}))
         self.engines_dict['staging'] = engine
+        create_all(engine)
         return engine    
 
     def dwh(self):
