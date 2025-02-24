@@ -1,7 +1,7 @@
-import psycopg2
-import pymysql
-import pyodbc
-import cx_Oracle
+# import psycopg2
+# import pymysql
+# import pyodbc
+# import cx_Oracle
 import clickhouse_connect
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
@@ -10,8 +10,18 @@ import urllib.parse
 
 def get_engine(config):
     """
-    :param config: Dictionary containing database connection details.
-    :return: SQLAlchemy Engine object.
+    Create an SQLAlchemy engine for various database types.
+
+    Supported databases:
+    - PostgreSQL
+    - MySQL
+    - MSSQL
+    - Oracle
+    - ClickHouse
+
+    :param config: Dictionary with database connection details.
+    :return: SQLAlchemy Engine object configured with the specified connection details.
+    :rtype: sqlalchemy.engine.Engine
     """
     dialect = config.get("dialect", "")
     driver = config.get("driver", "")
@@ -44,7 +54,13 @@ def get_engine(config):
 
         # ClickHouse - clickhouse_connect
         elif dialect == "clickhouse":
-            url = f"clickhouse+native://{username}:{password}@{host}:{port}/{database}"
+            return clickhouse_connect.get_client(
+                                            host=host, 
+                                            port=port, 
+                                            username=username, 
+                                            password=password,
+                                            database=database
+                                        )
 
         else:
             print(f"Unsupported database dialect: {dialect}")
@@ -61,5 +77,5 @@ def get_engine(config):
         return engine
 
     except Exception as e:
-        print(f"SQLAlchemy engine failed for {dialect}: {str(e)}")
+        print(f"engine failed for {dialect}: {str(e)}")
         return None

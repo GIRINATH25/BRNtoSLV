@@ -8,6 +8,10 @@ Base = declarative_base()
 
 class ControlHeader(Base):
     __tablename__ = 'controlheader'
+    __table_args__ = (
+        UniqueConstraint('sourceid', 'sourcename', name='controlheader_ukey'),
+        {'schema': 'ods'}
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     sourcename = Column(String(100), nullable=True)
@@ -46,13 +50,13 @@ class ControlHeader(Base):
     rawstorageflag = Column(Integer, nullable=True, default=1)
     sourcegroup = Column(String(40), nullable=True)
     
-    __table_args__ = (
-        UniqueConstraint('sourceid', 'sourcename', name='controlheader_ukey'),
-        {'schema': 'ods'}
-    )
 
 class ControlDetail(Base):
     __tablename__ = 'controldetail'
+    __table_args__ = (
+        UniqueConstraint('sourceid', 'dataflowflag', name='controldetail_ukey'),
+        {'schema': 'ods'}
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     sourcename = Column(String(100), nullable=True)
@@ -86,13 +90,10 @@ class ControlDetail(Base):
     executiontype = Column(String(40), nullable=True)
     intervaldays = Column(Integer, nullable=True)
     
-    __table_args__ = (
-        UniqueConstraint('sourceid', 'dataflowflag', name='controldetail_ukey'),
-        {'schema': 'ods'}
-    )
 
 class Audit(Base):
     __tablename__ = 'audit'
+    __table_args__ = ({'schema': 'ods'})
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     sourcename = Column(String(100), nullable=True)
@@ -121,13 +122,13 @@ class Audit(Base):
     useragent = Column(Text, nullable=True)
     sourcegroupflag = Column(Integer, nullable=True)
 
-    __table_args__ = ({'schema': 'ods'})
 
 
 
 
 class Error(Base):
     __tablename__ = 'error'
+    __table_args__ = ({'schema': 'ods'})
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     sourcename = Column(String(100), nullable=True)
@@ -150,7 +151,6 @@ class Error(Base):
     latestbatchid = Column(Integer, nullable=True)
     sourcegroupflag = Column(Integer, nullable=True)    
 
-    __table_args__ = ({'schema': 'ods'})
 
 
 class DwhToClickControlDtl(Base):
@@ -175,11 +175,11 @@ class DwhToClickControlDtl(Base):
     targetdatabase = Column(String(1000), nullable=True)
     encrypted_columns = Column(String(1000), nullable=True)
 
-def create_all(engine):
+def stg_create_all(engine):
     try:
         with engine.connect() as conn:
             conn.execute(text("CREATE SCHEMA ods"))
             conn.commit()
+            Base.metadata.create_all(engine)
     except Exception as e:
         print()
-    Base.metadata.create_all(engine)
