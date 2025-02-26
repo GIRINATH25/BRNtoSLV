@@ -1,6 +1,5 @@
 import datetime
 import pandas as pd
-import clickhouse_connect
 from sqlalchemy import text
 from db.db_connector import DBConnector
 from common.utils import time_this
@@ -52,7 +51,7 @@ def main(r):
         print(df)
         # cl.insert('testtb', df, column_names=df.columns.tolist())
         print('pushed into click')
-
+        
         conn.commit()
 
         with conn.execute(text("SELECT COUNT(*) FROM testtb")) as res:
@@ -62,12 +61,14 @@ def main(r):
 
 
 if __name__ == "__main__":
-    record = {
-        'sourceid': 'source_identifier',
-        'targetobject': 'target_object'
-    }
-    main(record)
+    # record = {
+    #     'sourceid': 'source_identifier',
+    #     'targetobject': 'target_object'
+    # }
+    # main(record)
 
+    engine = db.staging()
+    print('cursor' in dir(engine))
 # datetime_columns = col[col["DATA_TYPE"].str.contains("date|datetime", case=False)]["COLUMN_NAME"].tolist()
 
 # df = fix_old_dates(df, datetime_columns)  

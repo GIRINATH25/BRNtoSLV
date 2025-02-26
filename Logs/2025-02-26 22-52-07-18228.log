@@ -1,0 +1,8 @@
+2 entries in records
+Processing calling sequence 1
+Traceback (most recent call last):
+  File "D:\python_dwh\common\utils.py", line 115, in wrapper
+    source_count, insert_count, update_count = function(record)
+                                               ~~~~~~~~^^^^^^^^
+TypeError: BRNtoSLV.stg_to_dwh() missing 1 required positional argument: 'record'
+

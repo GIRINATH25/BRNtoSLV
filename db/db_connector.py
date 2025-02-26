@@ -1,6 +1,5 @@
 import yaml
 from db.engine import get_engine
-import db.model as model
 
 
 class DBConnector:
@@ -46,7 +45,6 @@ class DBConnector:
         
         engine = get_engine(self.config.get('staging', {}))
         self.engines_dict['staging'] = engine
-        model.stg_create_all(engine)
         return engine    
 
     def dwh(self):

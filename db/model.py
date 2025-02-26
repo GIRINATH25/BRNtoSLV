@@ -175,11 +175,12 @@ class DwhToClickControlDtl(Base):
     targetdatabase = Column(String(1000), nullable=True)
     encrypted_columns = Column(String(1000), nullable=True)
 
-def stg_create_all(engine):
+def create_all(engine):
     try:
         with engine.connect() as conn:
-            conn.execute(text("CREATE SCHEMA ods"))
+            conn.execute(text("CREATE SCHEMA ods;"))
             conn.commit()
             Base.metadata.create_all(engine)
+            print("Tables created successfully")
     except Exception as e:
         print()

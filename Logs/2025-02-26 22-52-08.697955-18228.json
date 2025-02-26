@@ -1,0 +1,15 @@
+[
+    {
+        "type": "TypeError",
+        "args": [
+            "BRNtoSLV.stg_to_dwh() missing 1 required positional argument: 'record'"
+        ],
+        "tb": "Traceback (most recent call last):\n  File \"D:\\python_dwh\\common\\utils.py\", line 115, in wrapper\n    source_count, insert_count, update_count = function(record)\n                                               ~~~~~~~~^^^^^^^^\nTypeError: BRNtoSLV.stg_to_dwh() missing 1 required positional argument: 'record'\n",
+        "timestamp": "2025-02-26T17:22:08.652983+00:00",
+        "src": "BRNtoSLV.operation.stg_to_dwh",
+        "obj_type": "Dimension",
+        "sourceid": "country",
+        "target_file": "d_country",
+        "latestbatchid": 303
+    }
+]
