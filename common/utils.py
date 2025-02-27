@@ -99,7 +99,7 @@ def auditable(function):
         # print(dir(record))
 
         try:
-            engine = db.staging()
+            engine = db.get_engine('staging')
             user_agent = 'Python'
             etl_batch_id = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(11))
             latestbatchid = audit_start(

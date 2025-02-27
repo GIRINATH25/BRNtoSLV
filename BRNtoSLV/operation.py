@@ -19,7 +19,7 @@ class BRNtoSLV:
         query = f"CALL {self.record.targetschemaname}.{self.record.targetprocedurename}('{self.record.sourceid}', '{self.record.dataflowflag}', '{self.record.targetobject}', 0, 0, 0, 0, NULL, NULL);"
         logger.info(query)
 
-        engine = engineObj.staging()
+        engine = engineObj.get_engine('staging')
 
         with engine.connect() as conn:
             res = conn.execute(text(query))

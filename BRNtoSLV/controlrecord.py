@@ -16,7 +16,7 @@ class ControlEntries:
         self.load_frequency = load_frequency
         self.failed_only = failed_only
         engine = DBConnector()
-        self.engine = engine.staging()
+        self.engine = engine.get_engine('staging')
 
     def fetch_records(self):
         """

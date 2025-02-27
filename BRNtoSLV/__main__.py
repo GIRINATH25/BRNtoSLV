@@ -12,7 +12,7 @@ from db.db_connector import DBConnector
 def main(args):
 
     if args.model_create:
-        engine = DBConnector().staging()
+        engine = DBConnector().get_engine('staging')
         create_all(engine)
         engine.dispose()
         sys.exit(0)
