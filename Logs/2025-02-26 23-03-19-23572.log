@@ -1,8 +1,0 @@
-2 entries in records
-Processing calling sequence 1
-CALL dwh.usp_d_country('country', 'StgtoDW', 'd_country', 0, 0, 0, 0, NULL, NULL);
-country                                  25 rows	 0.18 seconds	d_country                              	
-CALL dwh.usp_f_leads('leads', 'StgtoDW', 'f_leads', 0, 0, 0, 0, NULL, NULL);
-leads                                     1 rows	 0.01 seconds	f_leads                                	
-Finished running staging to dwh calling sequence 1 in series
-Total time taken:  0.20 seconds

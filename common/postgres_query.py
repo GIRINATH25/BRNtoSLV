@@ -1,9 +1,14 @@
-
+# ******************************************************************
+# To execute sp call ⇩
 exec_sp_errorinsert = "CALL ods.usp_etlerrorinsert( :sourceid, :targetobject, :dataflowflag, :latestbatchid, :task, :package, :error_id, :error_desc, :error_line )"
 
 exec_sp_etlpostprocess = "CALL ods.usp_etlpostprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :latestbatchid, :source_count, :insert_count, :update_count)"
 
 exec_sp_etlpreprocess = "CALL ods.usp_etlpreprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :source_count, :user_agent, :etl_batch_id, NULL)"
+
+
+# ******************************************************************
+# To find sp in DB ⇩
 
 find_sp_errorinsert = '''
                             SELECT SPECIFIC_NAME
@@ -22,6 +27,11 @@ find_sp_preprocess = '''
                             FROM INFORMATION_SCHEMA.ROUTINES
                             WHERE ROUTINE_NAME = 'usp_etlpreprocess'
                           '''
+
+
+
+# ******************************************************************
+# To create sp (ETL Process) ⇩
 
 postgres_sp_etlerrorinsert = """
 CREATE OR REPLACE PROCEDURE ods.usp_etlerrorinsert(
@@ -444,4 +454,104 @@ BEGIN
 
 END;
 $BODY$;
+"""
+
+
+# ******************************************************************
+# To create sp for data movement (basically script generation) ⇩
+
+postgres_sp_generation_slv = """
+
+CREATE OR REPLACE PROCEDURE :targetschemaname.usp_:targetobject(IN p_sourceid character varying, IN p_dataflowflag character varying, IN p_targetobject character varying, OUT srccnt integer, OUT inscnt integer, OUT updcnt integer, OUT dltcount integer, INOUT flag1 character varying, OUT flag2 character varying)
+ LANGUAGE plpgsql
+AS $procedure$
+
+DECLARE
+    p_etljobname VARCHAR(100);
+    p_envsourcecd VARCHAR(50);
+    p_datasourcecd VARCHAR(50);
+    p_batchid integer;
+    p_taskname VARCHAR(100);
+    p_packagename  VARCHAR(100);
+    p_errorid integer;
+    p_errordesc character varying;
+    p_errorline integer;
+    p_rawstorageflag integer;
+
+BEGIN
+    SELECT d.jobname, h.envsourcecode, h.datasourcecode, d.latestbatchid, d.targetprocedurename, h.rawstorageflag
+    INTO p_etljobname, p_envsourcecd, p_datasourcecd, p_batchid, p_taskname, p_rawstorageflag
+    FROM ods.controldetail d
+    INNER JOIN ods.controlheader h
+        ON d.sourceid = h.sourceid
+    WHERE d.sourceid = p_sourceid
+        AND d.dataflowflag = p_dataflowflag
+        AND d.targetobject = p_targetobject;
+
+    SELECT COUNT(1) INTO srccnt
+    FROM stg.:sourceobject;
+
+    UPDATE :targetschemaname.:targetobject t
+    SET
+		entity_id				=	s.entity_id,
+		entity_name				=	s.entity_name,
+		created_date			=	s.created_date,
+		etlactiveind            =	1,
+        etljobname              =	p_etljobname,
+        envsourcecd             =	p_envsourcecd,
+        datasourcecd            =	p_datasourcecd,
+        etlupdateddatetime       =	NOW()
+    FROM stg.:sourceobject s
+    WHERE t.entity_id			=	s.entity_id;
+
+    GET DIAGNOSTICS updcnt = ROW_COUNT;
+
+    INSERT INTO :targetschemaname.:targetobject
+    (
+    entity_id,
+	entity_name,
+	created_date,etlactiveind, etljobname, envsourcecd, 
+	datasourcecd, etlcreateddatetime
+	)
+
+    SELECT
+	s.entity_id,
+	s.entity_name,
+	s.created_date,1, p_etljobname, p_envsourcecd, 
+	p_datasourcecd, NOW()
+    FROM stg.:sourceobject s
+    LEFT JOIN :targetschemaname.:targetobject t
+    ON  t.entity_id		=	s.entity_id
+    AND	t.entity_name	=	s.entity_name
+	WHERE t.entity_id IS NULL;
+
+    GET DIAGNOSTICS inscnt = ROW_COUNT;
+
+--    IF p_rawstorageflag = 1
+--    THEN
+--
+--    INSERT INTO raw.raw_entity
+--    (
+--    entity_id,
+--	entity_name,
+--	created_date, etlcreateddatetime
+--    )
+--    SELECT
+--    s.entity_id,
+--	s.entity_name,
+--	s.created_date, NOW()
+--    FROM stg.stg_entity s;
+--    
+--    END IF;
+     EXCEPTION WHEN others THEN
+         get stacked diagnostics
+             p_errorid   = returned_sqlstate,
+             p_errordesc = message_text;
+     CALL ods.usp_etlerrorinsert(p_sourceid, p_targetobject, p_dataflowflag, p_batchid,p_taskname, 'sp_ExceptionHandling', p_errorid, p_errordesc, null);
+          select 0 into inscnt;
+          select 0 into updcnt;
+END;
+$procedure$
+;
+
 """

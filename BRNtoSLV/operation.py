@@ -9,17 +9,16 @@ engineObj = DBConnector()
 class BRNtoSLV:
     def __init__(self,records):
         self.record = records
-        # self.engine_stg = engineObj.staging()
-        # self.engine_dwh = engineObj.dwh()
 
     @time_this
     @auditable
     def stg_to_dwh(self):
         # print(self.records)
+        engine = engineObj.get_engine('staging')
+        
         query = f"CALL {self.record.targetschemaname}.{self.record.targetprocedurename}('{self.record.sourceid}', '{self.record.dataflowflag}', '{self.record.targetobject}', 0, 0, 0, 0, NULL, NULL);"
         logger.info(query)
 
-        engine = engineObj.get_engine('staging')
 
         with engine.connect() as conn:
             res = conn.execute(text(query))
