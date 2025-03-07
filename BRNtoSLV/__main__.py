@@ -18,7 +18,7 @@ def main(args):
         sys.exit(0)
 
     controlEntries = ControlEntries(
-        'StgtoDW',
+        'BRNtoSLV',
         args.sources and args.sources.split(args.delimiter),
         args.groups and args.groups.split(args.delimiter),
         args.exclude_sources and args.exclude_sources.split(args.delimiter),
@@ -71,23 +71,6 @@ def run(sorted_dfTonamedtuple, df_records, args):
                 obj = BRNtoSLV(record)
                 obj.stg_to_dwh()
             logger.info("Finished running staging to dwh calling sequence %d in series", i)
-
-# def run(sorted_dfTonamedtuple, df_records, args):
-#     """Runs the ETL process for each calling sequence."""
-#     for i in sorted_dfTonamedtuple:
-#         logger.info(f'Processing calling sequence {i}')
-#         records = [
-#             *df_records[df_records['sourcecallingseq'] == i].itertuples(name="Record", index=False)
-#         ]
-
-#         if args.parallel:
-#             with ThreadPoolExecutor(max_workers=args.parallel) as executor:
-#                 executor.map(lambda record: BRNtoSLV(record).stg_to_dwh(), records)
-#                 logger.info("Finished running staging to DWH for calling sequence %d in parallel", i)
-#         else:
-#             for record in records:
-#                 BRNtoSLV(record).stg_to_dwh()
-#             logger.info("Finished running staging to DWH for calling sequence %d in series", i)
 
 if __name__ == '__main__':
     cli_args = parser.parse_args()

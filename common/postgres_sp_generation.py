@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+import difflib
 
 def detect_database_type(engine):
     """Detect the database type using SQLAlchemy engine dialect."""
@@ -18,19 +19,31 @@ def fetch_table_columns(engine, schema_name, table_name):
         result = conn.execute(text(query))
         return [row[0] for row in result.fetchall()]
 
-def find_matching_columns(source_columns, target_columns, keys):
+def fetch_primary_unique_columns(engine, schema_name, table_name):
     """
-    Find the best match for 'id', 'name', 'email' even if prefixed/suffixed in source and target.
+    Fetch primary and unique key columns from a PostgreSQL table.
     """
-    matched = {}
-    for key in keys:
-        for col in source_columns:
-            if key in col.lower():  # Check if key exists as substring in column name
-                for tcol in target_columns:
-                    if key in tcol.lower():  # Match only if target has similar column
-                        matched[key] = (col, tcol)
-                        break
-    return matched
+    query = f"""
+    SELECT column_name 
+    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+    WHERE table_schema = '{schema_name}' 
+    AND table_name = '{table_name}';
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(query))
+        return [row[0] for row in result.fetchall()]
+
+def find_best_matching_columns(source_columns, target_columns):
+    """
+    Dynamically find the best matching columns between source and target tables
+    using substring matching and similarity scoring.
+    """
+    matched_columns = {}
+    for s_col in source_columns:
+        best_match = difflib.get_close_matches(s_col, target_columns, n=1, cutoff=0.6)
+        if best_match:
+            matched_columns[s_col] = best_match[0]  
+    return matched_columns
 
 def generate_stored_procedure(engine, target_schema='dwh', target_table=None, source_schema='stg', source_table=None):
     """Generate a PostgreSQL Stored Procedure dynamically based on table structure."""
@@ -38,20 +51,24 @@ def generate_stored_procedure(engine, target_schema='dwh', target_table=None, so
     if db_type != "postgresql":
         raise ValueError("Only PostgreSQL is supported for SP generation.")
 
-    # Fetch columns for INSERT and UPDATE
     target_columns = fetch_table_columns(engine, target_schema, target_table)
     source_columns = fetch_table_columns(engine, source_schema, source_table)
+    key_columns = fetch_primary_unique_columns(engine, source_schema, source_table)
 
-    # Match 'id', 'name', 'email' even if prefixed/suffixed
-    match_keys = ["id", "name", "email"]
-    matched_columns = find_matching_columns(source_columns, target_columns, match_keys)
+    matched_columns = find_best_matching_columns(source_columns, target_columns)
 
-    if not matched_columns:
-        raise ValueError(f"No suitable match columns found for {source_table} and {target_table}.")
+    filtered_match_columns = {s_col: matched_columns[s_col] for s_col in key_columns if s_col in matched_columns} 
 
-    match_conditions = " AND ".join([f"t.{tcol} = s.{scol}" for _, (scol, tcol) in matched_columns.items()])
+    if not filtered_match_columns:
+        match_conditions = "1=1"
+        insert_where_condition = "1=1"  
+    else:
+        match_conditions = " AND ".join([
+            f"t.{t_col} = s.{s_col}"
+            for s_col, t_col in filtered_match_columns.items()
+        ])
+        insert_where_condition = f"t.{list(filtered_match_columns.values())[0]} IS NULL"
 
-    # Generate UPDATE SET clause from source columns
     update_columns = [col for col in target_columns if col in source_columns]
     update_set_clause = ",\n        ".join([f"{col} = s.{col}" for col in update_columns] + [
         "etlactiveind = 1",
@@ -61,12 +78,10 @@ def generate_stored_procedure(engine, target_schema='dwh', target_table=None, so
         "etlupdateddatetime = NOW()"
     ])
 
-    # Generate INSERT column names and values (excluding computed ETL columns)
     target_columns = [col for col in target_columns if not col.endswith("key")]
     insert_columns = ", ".join(target_columns)
     insert_values = ", ".join([f"s.{col}" if col in source_columns else f"p_{col}" for col in target_columns])
 
-    # Generate the stored procedure
     sp_template = f"""
 CREATE OR REPLACE PROCEDURE {target_schema}.usp_{target_table}(
     IN p_sourceid character varying,
@@ -110,7 +125,7 @@ BEGIN
     -- Get source count
     SELECT COUNT(1) INTO srccnt FROM {source_schema}.{source_table};
 
-    -- Perform UPDATE based on selected match keys
+    -- Perform UPDATE based on dynamically matched columns
     UPDATE {target_schema}.{target_table} t
     SET
         {update_set_clause}
@@ -119,13 +134,12 @@ BEGIN
 
     GET DIAGNOSTICS updcnt = ROW_COUNT;
 
-    -- Perform INSERT for records not fully matching
+    -- Perform INSERT using LEFT JOIN instead of NOT EXISTS
     INSERT INTO {target_schema}.{target_table} ({insert_columns})
     SELECT {insert_values}
     FROM {source_schema}.{source_table} s
-    WHERE NOT EXISTS (
-        SELECT 1 FROM {target_schema}.{target_table} t WHERE {match_conditions}
-    );
+    LEFT JOIN {target_schema}.{target_table} t ON {match_conditions}
+    WHERE {insert_where_condition};
 
     GET DIAGNOSTICS inscnt = ROW_COUNT;
 
@@ -142,10 +156,3 @@ END;
 $procedure$;
 """
     return sp_template
-
-
-# Example Usage
-# engine = create_engine("postgresql://user:password@localhost:5432/mydatabase")  # Replace with actual DB engine
-# sp_sql = generate_stored_procedure(engine, "dwh", "d_customer", "stg", "stg_customer")
-
-# print(sp_sql)

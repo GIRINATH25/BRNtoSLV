@@ -63,6 +63,7 @@ class ControlDetail(Base):
     sourcetype = Column(String(50), nullable=True)
     sourcedescription = Column(String(100), nullable=False)
     sourceid = Column(String(100), nullable=False)
+    sourceschema = Column(String(50), nullable=True)
     sourceobject = Column(String(500), nullable=True)
     dataflowflag = Column(String(50), nullable=True)
     isreadyforexecution = Column(Integer, nullable=True)
@@ -183,4 +184,4 @@ def create_all(engine):
             Base.metadata.create_all(engine)
             print("Tables created successfully")
     except Exception as e:
-        print()
+        print('Already created')

@@ -13,7 +13,7 @@ import random
 import string
 from common.postgres_sp_generation import generate_stored_procedure
 from db.db_connector import DBConnector
-import common.postgres_query as q
+import db.postgres_query as q
 from common.table_generation_SLV import generate_create_table_sql, detect_database_type
 
 db = DBConnector()
@@ -21,7 +21,7 @@ db = DBConnector()
 def time_this(function):
     """
         To find execution time of a function.(Use single record from controlheader and controldetail)
-        -------------------------------------
+        --------------------------------------------------------------------------------------------
     """
     @functools.wraps(function)
     def wrapper(*args):
@@ -53,7 +53,7 @@ def time_this(function):
 def total_time_this(function):    
     """
         To find execution total time taken of a function.
-        -------------------------------------
+        ------------------------------------------------
     """
     @functools.wraps(function)
     def wrapper(*args, **kwargs):
@@ -74,8 +74,8 @@ def findmodule(dataflowflag):
     
     dataflowflag = dataflowflag[:3].lower()
     modules = {
-            'src': 'sourcetostaging',
-            'stg': 'stagingtodwh',
+            'src': 'SRCtoBRN',
+            'brn': 'BRNtoSLV',
         }
     return modules.get(dataflowflag, 'dwhtoclick')
 
@@ -102,11 +102,11 @@ def auditable(function):
 
         try:
             engine = db.get_engine('staging')
-
-            if record.dataflowflag == 'StgtoDW':
+            
+            if record.dataflowflag == 'BRNtoSLV':
                 create_table_SLV(engine,record)
                 create_sp_generation(engine,record)
-
+            
             user_agent = 'Python'
             etl_batch_id = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(11))
             latestbatchid = audit_start(
@@ -163,16 +163,6 @@ def auditable(function):
 
 
 def audit_start(sourceid, targetobject, dataflowflag, source_count, user_agent, etl_batch_id,engine):
-
-    with engine.connect() as conn:
-        res = conn.execute(text(q.find_sp_preprocess))
-        res = res.fetchone()
-        conn.commit()
-    
-    if (not res and res[0] != 'usp_etlpreprocess'):
-        with engine.connect() as conn:
-            res = conn.execute(text(q.postgres_sp_etlpreprocess))
-            conn.commit()
     
     params = {
         'sourceid': sourceid, 
@@ -186,7 +176,7 @@ def audit_start(sourceid, targetobject, dataflowflag, source_count, user_agent, 
         
     
     with engine.connect() as conn:
-        result = conn.execute(text(q.exec_sp_etlpreprocess),params)
+        result = conn.execute(text("CALL ods.usp_etlpreprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :source_count, :user_agent, :etl_batch_id, NULL)"),params)
         conn.commit()
         latestbatchid_row = result.fetchone()
         if latestbatchid_row:
@@ -195,16 +185,6 @@ def audit_start(sourceid, targetobject, dataflowflag, source_count, user_agent, 
         return latestbatchid
 
 def audit_end(sourceid, targetobject, dataflowflag, latestbatchid, source_count, insert_count, update_count,engine):
-
-    with engine.connect() as conn:
-        res = conn.execute(text(q.find_sp_postprocess))
-        res = res.fetchone()
-        conn.commit()
-    
-    if (not res and res[0] != 'usp_etlpostprocess'):
-        with engine.connect() as conn:
-            res = conn.execute(text(q.postgres_sp_etlpostprocess))
-            conn.commit()
 
     params = {
         'sourceid': sourceid, 
@@ -218,23 +198,13 @@ def audit_end(sourceid, targetobject, dataflowflag, latestbatchid, source_count,
         }
 
     with engine.connect() as conn:
-        conn.execute(text(q.exec_sp_etlpostprocess), params)
+        conn.execute(text("CALL ods.usp_etlpostprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :latestbatchid, :source_count, :insert_count, :update_count)"), params)
         conn.commit()
 
 
 @logs.handle_error
 def audit_error(sourceid, targetobject, dataflowflag, latestbatchid, task, package, error_id, error_desc, error_line, engine):
-
-    with engine.connect() as conn:
-        res = conn.execute(text(q.find_sp_errorinsert))
-        res = res.fetchone()
-        conn.commit()
     
-    if (not res and res[0] != 'usp_etlerrorinsert'):
-        with engine.connect() as conn:
-            res = conn.execute(text(q.postgres_sp_etlerrorinsert))
-            conn.commit()
-
     params = {
         'sourceid': sourceid, 
         'targetobject': targetobject, 
@@ -248,7 +218,7 @@ def audit_error(sourceid, targetobject, dataflowflag, latestbatchid, task, packa
         }
     
     with engine.connect() as conn:
-        conn.execute(text(q.exec_sp_errorinsert), params)
+        conn.execute(text("CALL ods.usp_etlerrorinsert( :sourceid, :targetobject, :dataflowflag, :latestbatchid, :task, :package, :error_id, :error_desc, :error_line )"), params)
 
 
 def create_table_SLV(engine,record):
