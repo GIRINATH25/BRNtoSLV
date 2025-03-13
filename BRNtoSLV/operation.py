@@ -9,7 +9,7 @@ engineObj = DBConnector()
 class BRNtoSLV:
     def __init__(self,records):
         self.record = records
-
+    
     @time_this
     @auditable
     def stg_to_dwh(self):
@@ -24,10 +24,4 @@ class BRNtoSLV:
             source_count, insert_count, update_count, delete_count, flag1, flag2 = res.fetchone()
             conn.commit()
         
-        print(source_count," ",update_count," ",insert_count)
-        # source_count, insert_count, update_count = (1,2,3)
-        # if(source_count and insert_count and update_count):
-        #     print(f"empty")
-        #     sys.exit(0)
-        # print(f"source_count: {source_count}, insert_count: {insert_count}, update_count: {update_count}")
         return (source_count, insert_count, update_count)

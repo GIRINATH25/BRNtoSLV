@@ -1,105 +1,21 @@
-from db.db_connector import DBConnector
-from sqlalchemy import text
+def infer_schema(data):
+    if isinstance(data, dict):
+        return {key: infer_schema(value) for key, value in data.items()}
+    elif isinstance(data, list) and data:
+        return [infer_schema(data[0])]
+    else:
+        return type(data).__name__
 
-db = DBConnector()
-engine = db.get_engine('clickhouse')
+json_data = {
+    "name": "John",
+    "age": 30,
+    "email": "john@example.com",
+    "address": {
+        "city": "New York",
+        "zip": "10001"
+    },
+    "is_active": True
+}
 
-print(engine.query('SELECT \'hello\'').result_set)
-
-
-# DATA_TYPE_MAP = {
-#     "INT": {"mysql": "INT", "postgresql": "INTEGER", "mssql": "INT"},
-#     "VARCHAR": {"mysql": "VARCHAR", "postgresql": "VARCHAR", "mssql": "VARCHAR"},
-#     "DECIMAL": {"mysql": "DECIMAL", "postgresql": "NUMERIC", "mssql": "DECIMAL"},
-#     "TEXT": {"mysql": "TEXT", "postgresql": "TEXT", "mssql": "TEXT"},
-#     "DATE": {"mysql": "DATE", "postgresql": "DATE", "mssql": "DATE"},
-#     "TIMESTAMP WITHOUT TIME ZONE": {"mysql": "TIMESTAMP", "postgresql": "TIMESTAMP", "mssql": "DATETIME"},
-#     "TIMESTAMP": {"mysql": "TIMESTAMP", "postgresql": "TIMESTAMP", "mssql": "DATETIME"}  
-# }
-
-# def detect_database_type(engine):
-#     """Detect the database type using SQLAlchemy engine dialect."""
-#     db_type = engine.dialect.name.lower()
-
-#     if db_type == "postgresql":
-#         return "postgresql"
-#     elif db_type == "mysql":
-#         return "mysql"
-#     elif db_type in {"mssql", "mssql+pyodbc"}:
-#         return "mssql"
-#     else:
-#         raise ValueError(f"Unsupported Database: {db_type}")
-
-# def fetch_table_metadata(engine, table_name):
-#     """Fetch metadata for the given table from INFORMATION_SCHEMA."""
-#     query = f"""
-#     SELECT 
-#         c.COLUMN_NAME AS column_name,
-#         c.DATA_TYPE AS data_type,
-#         COALESCE(c.CHARACTER_MAXIMUM_LENGTH, c.NUMERIC_PRECISION) AS max_length,
-#         c.NUMERIC_PRECISION AS precisions,
-#         c.NUMERIC_SCALE AS scale,
-#         c.IS_NULLABLE AS is_nullable,
-#         tc.CONSTRAINT_TYPE AS constraint_type,
-#         tc.CONSTRAINT_NAME AS constraint_name
-#     FROM INFORMATION_SCHEMA.COLUMNS c
-#     LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
-#         ON c.TABLE_NAME = kcu.TABLE_NAME AND c.COLUMN_NAME = kcu.COLUMN_NAME
-#     LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-#         ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
-#     WHERE c.TABLE_NAME = '{table_name}';
-#     """
-
-#     with engine.connect() as conn:
-#         result = conn.execute(text(query))
-#         return result.fetchall()
-
-# def generate_create_table_sql(engine, table_name):
-#     """Generate an accurate CREATE TABLE SQL statement for the detected DB."""
-#     metadata = fetch_table_metadata(engine, table_name)
-
-#     if not metadata:
-#         print(f"No metadata found for table: {table_name}")
-#         return None
-
-#     db_type = detect_database_type(engine)
-#     sql = f"CREATE TABLE {table_name} (\n"
-#     primary_keys = []
-
-#     for row in metadata:
-#         col_name = row.column_name
-#         raw_data_type = row.data_type.upper().replace(" WITHOUT TIME ZONE", "") 
-#         data_type = DATA_TYPE_MAP.get(raw_data_type, {}).get(db_type, raw_data_type)
-
-#         max_length = f"({row.max_length})" if row.max_length and "CHAR" in raw_data_type else ""
-#         is_nullable = "NULL" if row.is_nullable == "YES" else "NOT NULL"
-
-#         auto_increment = ""
-#         if row.constraint_type == "PRIMARY KEY":
-#             primary_keys.append(col_name)
-#             if db_type == "mysql":
-#                 auto_increment = "AUTO_INCREMENT"
-#             elif db_type == "postgresql":
-#                 data_type = "SERIAL"
-#                 max_length = ""  
-#             elif db_type == "mssql":
-#                 auto_increment = "IDENTITY(1,1)"
-
-#         if max_length == "" and db_type == 'mysql' and "CHAR" in raw_data_type:
-#             data_type = "TEXT"
-
-#         col_def = f"    {col_name} {data_type}{max_length} {auto_increment} {is_nullable}".strip()
-#         sql += col_def + ",\n"
-
-#     if primary_keys:
-#         sql += f"    PRIMARY KEY ({', '.join(primary_keys)})\n"
-
-#     sql = sql.rstrip(",\n") + "\n);"
-#     return sql
-
-# table_name = "audit"  
-# create_table_sql = generate_create_table_sql(engine, table_name)
-
-# if create_table_sql:
-#     print("\nGenerated CREATE TABLE SQL:\n")
-#     print(create_table_sql)
+schema = infer_schema(json_data)
+print(schema)

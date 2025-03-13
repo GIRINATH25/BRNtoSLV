@@ -2,3 +2,8 @@ venv
 config.yml
 dub.py
 sqltoch_JS.py
+check.js
+export_par.parquet
+notebook.ipynb
+sample_data.csv
+sqllite.db

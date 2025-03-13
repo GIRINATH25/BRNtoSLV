@@ -43,9 +43,9 @@ def time_this(function):
         time_start = time.perf_counter()
         result = function(*args)
         logger.info(
-            f'{record.sourceid.ljust(35)}{str(result[0]).rjust(8)} rows\t'
+            f'source => {record.sourceid} {str(result[0]).rjust(8)} rows\t'
             f'{time.perf_counter() - time_start:5.2f} seconds\t'
-            f'{record.targetobject.ljust(39)}\t'
+            f'target => {record.targetobject}\t'
         )
         return result
     return wrapper
@@ -99,7 +99,7 @@ def auditable(function):
         
         
         # print(dir(record))
-
+        
         try:
             engine = db.get_engine('staging')
             
@@ -204,7 +204,7 @@ def audit_end(sourceid, targetobject, dataflowflag, latestbatchid, source_count,
 
 @logs.handle_error
 def audit_error(sourceid, targetobject, dataflowflag, latestbatchid, task, package, error_id, error_desc, error_line, engine):
-    
+
     params = {
         'sourceid': sourceid, 
         'targetobject': targetobject, 
@@ -215,7 +215,7 @@ def audit_error(sourceid, targetobject, dataflowflag, latestbatchid, task, packa
         'error_id': error_id, 
         'error_desc': error_desc, 
         'error_line': error_line
-        }
+    }
     
     with engine.connect() as conn:
         conn.execute(text("CALL ods.usp_etlerrorinsert( :sourceid, :targetobject, :dataflowflag, :latestbatchid, :task, :package, :error_id, :error_desc, :error_line )"), params)

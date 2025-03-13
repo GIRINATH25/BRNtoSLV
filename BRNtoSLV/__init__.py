@@ -1,7 +1,6 @@
 import random
 import string
 import argparse
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
 	'-s',
@@ -78,4 +77,10 @@ parser.add_argument(
 	action='store_true',
 	help="Model Create"
 )
+parser.add_argument(
+	'-df',
+	'--dataflowflag',
+	help="dataflowflag"
+)
+
 etl_batch_id = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(11))

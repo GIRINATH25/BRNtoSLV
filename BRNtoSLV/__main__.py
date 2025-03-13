@@ -4,7 +4,7 @@ import pandas as pd
 from common.logs import logger
 from common.utils import total_time_this
 from BRNtoSLV import parser
-from BRNtoSLV.controlrecord import ControlEntries
+from common.controlrecord import ControlEntries
 from BRNtoSLV.operation import BRNtoSLV
 from db.model import create_all
 from db.db_connector import DBConnector
@@ -16,9 +16,9 @@ def main(args):
         create_all(engine)
         engine.dispose()
         sys.exit(0)
-
+    # print(args.dataflowflag)
     controlEntries = ControlEntries(
-        'BRNtoSLV',
+        args.dataflowflag if args.dataflowflag else 'BRNtoSLV',
         args.sources and args.sources.split(args.delimiter),
         args.groups and args.groups.split(args.delimiter),
         args.exclude_sources and args.exclude_sources.split(args.delimiter),
@@ -39,7 +39,7 @@ def main(args):
 
     if args.list_sources:
         for record in records:
-            logger.info(f"{record.dataflowflag:<20} - {record.sourceid}")
+            logger.info(f"{record.dataflowflag} => {record.sourceid}")
         sys.exit(0)
 
     df_records = pd.DataFrame(records)
@@ -65,12 +65,12 @@ def run(sorted_dfTonamedtuple, df_records, args):
                 for record in records:
                     obj = BRNtoSLV(record)
                     executor.submit(obj.stg_to_dwh)
-                logger.info("Finished running staging to dwh calling sequence %d in parallel", i)
+                logger.info("Finished running BRN to SLV calling sequence %d in parallel", i)
         else:
             for record in records:
                 obj = BRNtoSLV(record)
                 obj.stg_to_dwh()
-            logger.info("Finished running staging to dwh calling sequence %d in series", i)
+            logger.info("Finished running BRN to SLV calling sequence %d in series", i)
 
 if __name__ == '__main__':
     cli_args = parser.parse_args()
