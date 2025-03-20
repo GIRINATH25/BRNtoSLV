@@ -19,6 +19,12 @@ find_sp_preprocess = '''
                             WHERE ROUTINE_NAME = 'usp_etlpreprocess'
                           '''
 
+find_sp_usp_SrcToMain_lookup = '''
+                            SELECT SPECIFIC_NAME
+                            FROM INFORMATION_SCHEMA.ROUTINES
+                            WHERE ROUTINE_NAME = 'usp_SrcToMain_lookup'
+                          '''
+
 
 
 # ******************************************************************
@@ -445,3 +451,185 @@ END;
 $BODY$;
 """
 
+postgres_sp_SRCtoMAIN_lookup = """
+CREATE OR REPLACE PROCEDURE usp_SrcToMain_lookup()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Insert transformed schema into main_lookup
+    INSERT INTO ods.main_lookup (
+        column_id, column_name,  target_table,
+        target_data_type, length, precisions, scale, nullable,
+        key_constraint, processing_layer, default_value
+    )
+    SELECT
+	    s.column_id,
+	    s.column_name,
+	    s.target_table,
+	    COALESCE(m.targetdatatypes, 'text') AS target_data_type, -- Use mapping, else text
+	    CASE
+            WHEN s.length = -1 THEN NULL -- Replace -1 with NULL
+            ELSE s.length
+        END AS length,
+	    s.precisions,
+	    s.scale,
+	    s.nullable,
+	    s.key_constraint,
+	    'BRN' AS processing_layer, -- Modify based on ETL layer (e.g., 'raw', 'staging', 'gold')
+	    NULL AS default_value -- Modify if you need to derive default values
+	FROM
+	    ods.source_lookup s
+	LEFT JOIN
+	    (SELECT DISTINCT sourcedatatypes, targetdatatypes, sourcedatabasetype
+	     FROM ods.datatype_mapping) m
+	ON
+	    s.source_data_type = LOWER(m.sourcedatatypes)
+	    AND s.source_type = m.sourcedatabasetype
+	WHERE
+	    s.column_id IS NOT NULL -- Ensure column_id is not null to prevent duplicates
+	ORDER BY
+	    s.column_id, s.column_name, s.target_table;
+ 
+ 
+END;
+$$;
+"""
+
+
+data = [
+    # SQL Server to PostgreSQL
+    ("SQL Server", "PostgreSQL", "INT", "INTEGER"),
+    ("SQL Server", "PostgreSQL", "BIGINT", "BIGINT"),
+    ("SQL Server", "PostgreSQL", "SMALLINT", "SMALLINT"),
+    ("SQL Server", "PostgreSQL", "TINYINT", "SMALLINT"),
+    ("SQL Server", "PostgreSQL", "BIT", "TEXT"),
+    ("SQL Server", "PostgreSQL", "DECIMAL", "NUMERIC"),
+    ("SQL Server", "PostgreSQL", "NUMERIC", "NUMERIC"),
+    ("SQL Server", "PostgreSQL", "FLOAT", "DOUBLE PRECISION"),
+    ("SQL Server", "PostgreSQL", "REAL", "REAL"),
+    ("SQL Server", "PostgreSQL", "MONEY", "NUMERIC(19,4)"),
+    ("SQL Server", "PostgreSQL", "SMALLMONEY", "NUMERIC(10,4)"),
+    ("SQL Server", "PostgreSQL", "VARCHAR", "VARCHAR"),
+    ("SQL Server", "PostgreSQL", "NVARCHAR", "VARCHAR"),
+    ("SQL Server", "PostgreSQL", "TEXT", "TEXT"),
+    ("SQL Server", "PostgreSQL", "NTEXT", "TEXT"),
+    ("SQL Server", "PostgreSQL", "CHAR", "CHAR"),
+    ("SQL Server", "PostgreSQL", "NCHAR", "CHAR"),
+    ("SQL Server", "PostgreSQL", "DATETIME", "TIMESTAMP"),
+    ("SQL Server", "PostgreSQL", "DATETIME2", "TIMESTAMP"),
+    ("SQL Server", "PostgreSQL", "SMALLDATETIME", "TIMESTAMP"),
+    ("SQL Server", "PostgreSQL", "DATE", "DATE"),
+    ("SQL Server", "PostgreSQL", "TIME", "TIME"),
+    ("SQL Server", "PostgreSQL", "BINARY", "BYTEA"),
+    ("SQL Server", "PostgreSQL", "VARBINARY", "BYTEA"),
+    ("SQL Server", "PostgreSQL", "IMAGE", "BYTEA"),
+    ("SQL Server", "PostgreSQL", "UNIQUEIDENTIFIER", "UUID"),
+    ("SQL Server", "PostgreSQL", "XML", "TEXT"),
+    ("SQL Server", "PostgreSQL", "SQL_VARIANT", "TEXT"),
+    ("SQL Server", "PostgreSQL", "HIERARCHYID", "TEXT"),
+    ("SQL Server", "PostgreSQL", "GEOGRAPHY", "TEXT"),
+    ("SQL Server", "PostgreSQL", "GEOMETRY", "TEXT"),
+
+    # PostgreSQL to PostgreSQL
+    ("PostgreSQL", "PostgreSQL", "SMALLINT", "SMALLINT"),
+    ("PostgreSQL", "PostgreSQL", "INTEGER", "INTEGER"),
+    ("PostgreSQL", "PostgreSQL", "BIGINT", "BIGINT"),
+    ("PostgreSQL", "PostgreSQL", "DECIMAL", "DECIMAL"),
+    ("PostgreSQL", "PostgreSQL", "NUMERIC", "NUMERIC"),
+    ("PostgreSQL", "PostgreSQL", "REAL", "REAL"),
+    ("PostgreSQL", "PostgreSQL", "DOUBLE PRECISION", "DOUBLE PRECISION"),
+    ("PostgreSQL", "PostgreSQL", "SERIAL", "SERIAL"),
+    ("PostgreSQL", "PostgreSQL", "BIGSERIAL", "BIGSERIAL"),
+    ("PostgreSQL", "PostgreSQL", "BOOLEAN", "BOOLEAN"),
+    ("PostgreSQL", "PostgreSQL", "CHAR", "CHAR"),
+    ("PostgreSQL", "PostgreSQL", "VARCHAR", "VARCHAR"),
+    ("PostgreSQL", "PostgreSQL", "TEXT", "TEXT"),
+    ("PostgreSQL", "PostgreSQL", "BYTEA", "BYTEA"),
+    ("PostgreSQL", "PostgreSQL", "TIMESTAMP", "TIMESTAMP"),
+    ("PostgreSQL", "PostgreSQL", "TIMESTAMP WITH TIME ZONE", "TIMESTAMP WITH TIME ZONE"),
+    ("PostgreSQL", "PostgreSQL", "DATE", "DATE"),
+    ("PostgreSQL", "PostgreSQL", "TIME", "TIME"),
+    ("PostgreSQL", "PostgreSQL", "TIME WITH TIME ZONE", "TIME WITH TIME ZONE"),
+    ("PostgreSQL", "PostgreSQL", "INTERVAL", "INTERVAL"),
+    ("PostgreSQL", "PostgreSQL", "UUID", "UUID"),
+    ("PostgreSQL", "PostgreSQL", "XML", "XML"),
+    ("PostgreSQL", "PostgreSQL", "JSON", "JSON"),
+    ("PostgreSQL", "PostgreSQL", "JSONB", "JSONB"),
+    ("PostgreSQL", "PostgreSQL", "ARRAY", "ARRAY"),
+    ("PostgreSQL", "PostgreSQL", "CITEXT", "CITEXT"),
+
+    # Flatfile to PostgreSQL
+    ("Flatfile", "PostgreSQL", "int64", "BIGINT"),
+    ("Flatfile", "PostgreSQL", "int32", "INTEGER"),
+    ("Flatfile", "PostgreSQL", "float64", "DOUBLE PRECISION"),
+    ("Flatfile", "PostgreSQL", "float32", "REAL"),
+    ("Flatfile", "PostgreSQL", "bool", "BOOLEAN"),
+    ("Flatfile", "PostgreSQL", "object", "TEXT"),
+    ("Flatfile", "PostgreSQL", "string", "TEXT"),
+    ("Flatfile", "PostgreSQL", "category", "TEXT"),
+    ("Flatfile", "PostgreSQL", "datetime64[ns]", "TIMESTAMP WITHOUT TIME ZONE"),
+    ("Flatfile", "PostgreSQL", "datetime64[ns, tz]", "TIMESTAMP WITH TIME ZONE"),
+    ("Flatfile", "PostgreSQL", "timedelta[ns]", "INTERVAL"),
+]
+
+golden_layer_sp = """
+CREATE OR REPLACE FUNCTION ods.clickhouse_table_script_generator(
+	p_target_database character varying,
+	p_source_schema_name character varying,
+	p_source_table_name character varying)
+    RETURNS text
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+DECLARE
+    v_table_ddl   text;
+    column_record record;
+	v_primary_key text;
+BEGIN
+	select column_name into v_primary_key  from information_schema.columns
+	where table_name ~ ('^('||p_source_table_name||')$')
+	and table_schema::name  ~ ('^('||p_source_schema_name||')$')
+	and is_identity = 'YES';
+ 
+    FOR column_record IN
+ 
+SELECT t.table_name as table_name,
+    c.table_schema as  schema_name,
+    c.column_name as column_name,
+    d.targetdatatypes as column_type ,
+	min(ordinal_position) as min_attnum,
+	max(ordinal_position) as max_attnum,
+	ordinal_position
+   FROM information_schema.tables t
+     JOIN information_schema.columns c
+	 ON t.table_name::name = c.table_name::name
+	 AND t.table_schema::name = c.table_schema::name
+	 JOIN ods.datatype_mapping d
+	 on c.data_type = d.sourcedatatypes
+	where t.table_name ~ ('^('||p_source_table_name||')$')
+	and t.table_schema::name  ~ ('^('||p_source_schema_name||')$')
+	group by t.table_name,c.table_schema,c.column_name,d.targetdatatypes,ordinal_position
+	ORDER BY ordinal_position
+    LOOP
+        IF column_record.min_attnum = 1 THEN
+            v_table_ddl:='CREATE TABLE '||p_target_database||'.'||column_record.table_name||' (';
+        ELSE
+            v_table_ddl:=v_table_ddl||',';
+        END IF;
+ 
+        IF column_record.min_attnum <= column_record.max_attnum THEN
+            v_table_ddl:=v_table_ddl||chr(10)||
+                     '    '||column_record.column_name||' '||CASE WHEN column_record.column_name = v_primary_key THEN 'Int64' ELSE column_record.column_type END;
+        END IF;
+    END LOOP;
+ 
+    v_table_ddl:=v_table_ddl||') ENGINE = MergeTree ORDER BY tuple('||v_primary_key||');';
+    RETURN v_table_ddl;
+END;
+$BODY$;
+ 
+ALTER FUNCTION ods.clickhouse_table_script_generator(character varying, character varying, character varying)
+    OWNER TO postgres;
+
+"""

@@ -2,12 +2,6 @@
     "sqltools.useNodeRuntime": true,
     "sqltools.connections": [
         {
-            "previewLimit": 50,
-            "driver": "SQLite",
-            "name": "sqlLite",
-            "database": "sqllite.db"
-        },
-        {
             "connectionTimeout": 15,
             "mssqlOptions": {
                 "appName": "SQLTools",
@@ -33,6 +27,12 @@
             "database": "test_db",
             "username": "postgres",
             "password": "sql"
+        },
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "sqlite",
+            "database": "${workspaceFolder:BRNtoSLV}/new1.db"
         }
     ]
 }

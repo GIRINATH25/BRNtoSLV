@@ -153,28 +153,55 @@ class Error(Base):
     sourcegroupflag = Column(Integer, nullable=True)    
 
 
+class MainLookup(Base):
+    __tablename__ = "main_lookup"
+    __table_args__ = {"schema": "ods"}  
 
-class DwhToClickControlDtl(Base):
-    __tablename__ = 'dwhtoclickcontroldtl'
-    __table_args__ = {'schema': 'ods'}
+    lookup_id = Column(Integer, primary_key=True, autoincrement=True)
+    column_id = Column(Integer, nullable=True)
+    column_name = Column(String(255), nullable=True)
+    target_table = Column(String(255), nullable=True)
+    target_data_type = Column(String(255), nullable=True)
+    length = Column(Integer, nullable=True)
+    precisions = Column(Integer, nullable=True)
+    scale = Column(Integer, nullable=True)
+    nullable = Column(Boolean, nullable=True)
+    key_constraint = Column(String(50), nullable=True)
+    processing_layer = Column(String(50), nullable=True)
+    default_value = Column(String(255), nullable=True)
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"), nullable=True)
+
+
+class SourceLookup(Base):
+    __tablename__ = "source_lookup"
+    __table_args__ = {"schema": "ods"} 
+
+    source_id = Column(Integer, primary_key=True, autoincrement=True)
+    source_type = Column(String(50), nullable=True)
+    source_schema = Column(String(255), nullable=True)
+    source_table = Column(String(255), nullable=True)
+    column_id = Column(Integer, nullable=True)
+    column_name = Column(String(255), nullable=True)
+    source_data_type = Column(String(255), nullable=True)
+    length = Column(Integer, nullable=True)
+    precisions = Column(Integer, nullable=True)
+    scale = Column(Integer, nullable=True)
+    nullable = Column(Boolean, nullable=True)
+    key_constraint = Column(String(50), nullable=True)
+    target_table = Column(String(255), nullable=True)
+    extraction_timestamp = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"), nullable=True)
+
+class DataTypeMapping(Base):
+    __tablename__ = "datatype_mapping"
+    __table_args__ = {"schema": "ods"}  
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    targettablename = Column(String(100), nullable=True)
-    dataflowflag = Column(String(20), nullable=True)
-    objecttype = Column(String(40), nullable=True)
-    objectname = Column(String(100), nullable=True)
-    executionflag = Column(Integer, nullable=True)
-    seqexecution = Column(Integer, nullable=True)
-    loadtype = Column(String(40), nullable=True)
-    loadfrequency = Column(String(20), nullable=True)
-    status = Column(String(40), nullable=True)
-    loadstartdatetime = Column(TIMESTAMP, nullable=True)
-    loadenddatetime = Column(TIMESTAMP, nullable=True)
-    depsource = Column(String(100), nullable=True)
-    createddatetime = Column(TIMESTAMP, server_default=text('now()'), nullable=True)
-    sourceschema = Column(String(20), nullable=True)
-    targetdatabase = Column(String(1000), nullable=True)
-    encrypted_columns = Column(String(1000), nullable=True)
+    sourcedatabasetype = Column(String(100), nullable=True)
+    sourcedatatypes = Column(String(100), nullable=True)
+    targetdatabasetype = Column(String(100), nullable=True)
+    targetdatatypes = Column(String(100), nullable=True)
+    createdatetime = Column(TIMESTAMP, server_default=text("NOW()"), nullable=True)
+
 
 def create_all(engine):
     try:

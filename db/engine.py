@@ -32,6 +32,7 @@ def get_engine(config):
     database = conn.get("database", "")
     username = conn.get("username", "")
     password = conn.get("password", "")
+    password = urllib.parse.quote_plus(password)
 
     try:
         # PostgreSQL - psycopg2

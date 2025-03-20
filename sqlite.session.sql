@@ -1,0 +1,1 @@
+SELECT * FROM tab LEFT JOIN tab2 ON tab.id = tab2.tab_id

@@ -11,10 +11,8 @@ from common.logs import logger
 from common import logs
 import random
 import string
-from common.postgres_sp_generation import generate_stored_procedure
 from db.db_connector import DBConnector
 import db.postgres_query as q
-from common.table_generation_SLV import generate_create_table_sql, detect_database_type
 
 db = DBConnector()
 
@@ -103,9 +101,6 @@ def auditable(function):
         try:
             engine = db.get_engine('staging')
             
-            if record.dataflowflag == 'BRNtoSLV':
-                create_table_SLV(engine,record)
-                create_sp_generation(engine,record)
             
             user_agent = 'Python'
             etl_batch_id = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(11))
@@ -221,74 +216,3 @@ def audit_error(sourceid, targetobject, dataflowflag, latestbatchid, task, packa
         conn.execute(text("CALL ods.usp_etlerrorinsert( :sourceid, :targetobject, :dataflowflag, :latestbatchid, :task, :package, :error_id, :error_desc, :error_line )"), params)
 
 
-def create_table_SLV(engine,record):
-    with engine.connect() as conn:
-                param = {'target_table':record.targetobject}
-                res = conn.execute(text('''
-                                            SELECT COUNT(*) AS cn
-                                            FROM INFORMATION_SCHEMA.TABLES
-                                            WHERE TABLE_NAME = :target_table
-                                            '''),param)
-                res = res.fetchone()
-                conn.commit()
-
-    if res[0] == 0:
-                logger.info(f'target table unavailable => Creating it {record.targetobject}')
-                create_script = generate_create_table_sql(engine, record.sourceobject, record.targetobject)
-                db_type = detect_database_type(engine)
-
-                if db_type == 'mysql':
-                    with engine.connect() as conn:
-                        conn.execute(text(create_script))
-                        conn.commit()
-                else:
-                    schema_available(engine,record)
-                    create_script = add_schema_to_create_table(create_script,record.targetschemaname)
-                    with engine.connect() as conn:
-                        conn.execute(text(create_script))
-                        conn.commit()
-
-
-def schema_available(engine,record):
-    with engine.connect() as conn:
-        param = {'schema':record.targetschemaname}
-        res = conn.execute(text('''
-                                    SELECT COUNT(SCHEMA_NAME)
-                                    FROM INFORMATION_SCHEMA.SCHEMATA
-                                    WHERE SCHEMA_NAME = :schema '''),param)
-        res = res.fetchall()
-        conn.commit()
-
-    if res[0] == 0: 
-        with engine.connect() as conn:
-            logger.info(f'target schema unavailable => Creating it {record.targetschemaname}')
-            param = {'targetschemaname':record.targetschemaname}
-            conn.execute(text('CREATE SCHEMA :targetschemaname'),param)
-            conn.commit()
-
-def add_schema_to_create_table(create_script, target_schemaname):
-    """
-    Modify CREATE TABLE statement to add schema before table name.
-    """
-    pattern = r"CREATE TABLE\s+(\w+)\s*\(" 
-    replacement = f"CREATE TABLE {target_schemaname}.\\1 ("  
-
-    modified_script = re.sub(pattern, replacement, create_script, count=1)  
-    return modified_script
-
-
-def create_sp_generation(engine,record):
-    with engine.connect() as conn:
-        res = conn.execute(text(f'''
-                                    SELECT COUNT(SPECIFIC_NAME)
-                                    FROM INFORMATION_SCHEMA.ROUTINES
-                                    WHERE ROUTINE_NAME = '{record.targetprocedurename}' '''))
-        res = res.fetchall()
-        conn.commit()
-    
-    if res[0][0] == 0:
-        with engine.connect() as conn:
-            logger.info(f'target procedure unavailable => Creating it {record.targetprocedurename}')
-            query = generate_stored_procedure(engine,record.targetschemaname,record.targetobject,'stg',record.sourceobject)
-            res = conn.execute(text(query))
-            conn.commit()

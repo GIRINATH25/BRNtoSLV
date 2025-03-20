@@ -1,8 +1,0 @@
-2 entries in records
-Processing calling sequence 1
-CALL dwh.usp_d_country('country', 'BRNtoSLV', 'd_country', 0, 0, 0, 0, NULL, NULL);
-country                                  25 rows	 0.25 seconds	d_country                              	
-CALL dwh.usp_d_entity('entity', 'BRNtoSLV', 'd_entity', 0, 0, 0, 0, NULL, NULL);
-entity                                    4 rows	 0.02 seconds	d_entity                               	
-Finished running staging to dwh calling sequence 1 in series
-Total time taken:  0.27 seconds
