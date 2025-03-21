@@ -46,6 +46,8 @@ class ControlEntries:
                 detail.SourceObject,
                 header.DepSource,
                 detail.LoadType,
+                detail.sourceschema,
+                detail.targetschemaname,
                 detail.LoadFrequency,
                 header.ConnectionStr,
                 header.ObjectType,
