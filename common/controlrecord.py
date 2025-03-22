@@ -28,7 +28,7 @@ class ControlEntries:
         with self.engine.connect() as conn:
             result = conn.execute(text(query), params)
             rows = result.fetchall()
-            conn.commit()
+
 
             Record = namedtuple('Record', result.keys())
             
@@ -47,7 +47,6 @@ class ControlEntries:
                 header.DepSource,
                 detail.LoadType,
                 detail.sourceschema,
-                detail.targetschemaname,
                 detail.LoadFrequency,
                 header.ConnectionStr,
                 header.ObjectType,

@@ -33,14 +33,16 @@ class BRNtoSLV:
                                         WHERE TABLE_NAME = :target_table
                                         '''),param)
             res = res.fetchone()
-            conn.commit()
+            # conn.commit()
         
         # Silver table creation if not available
         if res[0] == 0:
             logger.info(f'target table unavailable => Creating it {self.record.targetobject}')
             with engine.connect() as conn:
-                conn.execute(text(f"CALL ods.create_slv_table_from_lookup({self.record.targetschemaname}, {self.record.sourceobject}, {self.record.targetobject})"))
-                conn.commit()
+                with conn.begin():
+                    conn.execute(text(f"CALL ods.upsert_main_lookup('{self.record.sourceid}', '{self.record.sourceobject}', '{self.record.sourceschema}','{self.record.targetobject}');"))
+                    conn.execute(text(f"CALL ods.create_slv_table_from_lookup('{self.record.targetschemaname}', '{self.record.sourceobject}', '{self.record.targetobject}');"))
+                    # conn.commit()
 
         
         # checking for target procedure availability
@@ -50,21 +52,24 @@ class BRNtoSLV:
                                         FROM INFORMATION_SCHEMA.ROUTINES
                                         WHERE ROUTINE_NAME = '{self.record.targetprocedurename}' '''))
             res = res.fetchone()
-            conn.commit()
+            # conn.commit()
         
         if res[0] == 0:
             logger.info(f"target procedure unavailable => Creating it {self.record.targetprocedurename}")
             with engine.connect() as conn:
-                conn.execute(text(f"CALL ods.usp_sp_generate_slv({self.record.targetschemaname}, {self.record.targetobject}, {self.record.sourceschema}, {self.record.sourceobject})"))
-                conn.commit()
+                # print(self.record)
+                with conn.begin():
+                    conn.execute(text(f"CALL ods.usp_sp_generate_slv('{self.record.targetschemaname}', '{self.record.targetobject}', '{self.record.sourceschema}', '{self.record.sourceobject}')"))
+                    # conn.commit()
 
         query = f"CALL {self.record.targetschemaname}.{self.record.targetprocedurename}('{self.record.sourceid}', '{self.record.dataflowflag}', '{self.record.targetobject}', 0, 0, 0, 0, NULL, NULL);"
         logger.info(query)
         
         with engine.connect() as conn:
-            res = conn.execute(text(query))
-            source_count, insert_count, update_count, delete_count, flag1, flag2 = res.fetchone()
-            conn.commit()
+            with conn.begin():
+                res = conn.execute(text(query))
+                source_count, insert_count, update_count, delete_count, flag1, flag2 = res.fetchone()
+                # conn.commit()
         
         return (source_count, insert_count, update_count)
 

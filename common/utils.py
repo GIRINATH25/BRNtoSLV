@@ -171,9 +171,10 @@ def audit_start(sourceid, targetobject, dataflowflag, source_count, user_agent, 
         
     
     with engine.connect() as conn:
-        result = conn.execute(text("CALL ods.usp_etlpreprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :source_count, :user_agent, :etl_batch_id, NULL)"),params)
-        conn.commit()
-        latestbatchid_row = result.fetchone()
+        with conn.begin():
+            result = conn.execute(text("CALL ods.usp_etlpreprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :source_count, :user_agent, :etl_batch_id, NULL)"),params)
+            latestbatchid_row = result.fetchone()
+            # conn.commit()
         if latestbatchid_row:
             latestbatchid = latestbatchid_row[0]
         
@@ -193,8 +194,9 @@ def audit_end(sourceid, targetobject, dataflowflag, latestbatchid, source_count,
         }
 
     with engine.connect() as conn:
-        conn.execute(text("CALL ods.usp_etlpostprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :latestbatchid, :source_count, :insert_count, :update_count)"), params)
-        conn.commit()
+        with conn.begin():
+            conn.execute(text("CALL ods.usp_etlpostprocess( :sourceid, :targetobject, :dataflowflag, :sourcegroupflag, :latestbatchid, :source_count, :insert_count, :update_count)"), params)
+            # conn.commit()
 
 
 @logs.handle_error
@@ -213,6 +215,7 @@ def audit_error(sourceid, targetobject, dataflowflag, latestbatchid, task, packa
     }
     
     with engine.connect() as conn:
-        conn.execute(text("CALL ods.usp_etlerrorinsert( :sourceid, :targetobject, :dataflowflag, :latestbatchid, :task, :package, :error_id, :error_desc, :error_line )"), params)
+        with conn.begin():
+            conn.execute(text("CALL ods.usp_etlerrorinsert( :sourceid, :targetobject, :dataflowflag, :latestbatchid, :task, :package, :error_id, :error_desc, :error_line )"), params)
 
 
