@@ -52,7 +52,7 @@ BEGIN
             UPDATE ods.main_lookup
             SET 
                 silverdwh_columnname = rec.column_name,
-                source_datatype = rec.data_type,
+                datatype = rec.data_type,
                 length = rec.length,
                 precisions = rec.precisions,
                 scale = rec.scale,
@@ -69,7 +69,7 @@ BEGIN
                 sourceid, 
                 silverdwh_tablename, 
                 silverdwh_columnname, 
-                source_datatype, 
+                datatype, 
                 length, 
                 precisions, 
                 scale, 
@@ -128,16 +128,16 @@ BEGIN
             || '(INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL, ';
     
     FOR rec IN (
-        SELECT silverdwh_columnname, source_datatype, length, precisions, scale, nullable, keyconstraint, silver_default_value
+        SELECT silverdwh_columnname, datatype, length, precisions, scale, nullable, keyconstraint, silver_default_value
         FROM ods.main_lookup
         WHERE silverdwh_tablename = p_targettablename
     ) LOOP
-        v_sql := v_sql || rec.silverdwh_columnname || ' ' || rec.source_datatype;
+        v_sql := v_sql || rec.silverdwh_columnname || ' ' || rec.datatype;
         
         -- Add length/precision/scale if applicable
-        IF rec.source_datatype ILIKE 'char%' OR rec.source_datatype ILIKE 'varchar' THEN
+        IF rec.datatype ILIKE 'char%' OR rec.datatype ILIKE 'varchar' THEN
             v_sql := v_sql || '(' || COALESCE(rec.length::TEXT, '255') || ')';
-        ELSIF rec.source_datatype ILIKE 'decimal' OR rec.source_datatype ILIKE 'numeric' THEN
+        ELSIF rec.datatype ILIKE 'decimal' OR rec.datatype ILIKE 'numeric' THEN
             v_sql := v_sql || '(' || COALESCE(rec.precisions::TEXT, '18') || ', ' || COALESCE(rec.scale::TEXT, '2') || ')';
         END IF;
         
